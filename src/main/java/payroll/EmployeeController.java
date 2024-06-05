@@ -15,6 +15,9 @@ import org.springframework.hateoas.EntityModel;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import org.springframework.hateoas.CollectionModel;
 
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
+
 @RestController
 class EmployeeController {
 
@@ -64,10 +67,89 @@ class EmployeeController {
         return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
     }
 
+    /*
     @PostMapping("/employees")
     Employee newEmployee(@RequestBody Employee newEmployee) {
         return repository.save(newEmployee);
     }
+
+    // this will response:
+    $ curl -v -X POST localhost:8080/employees -H 'Content-Type:application/json' -d '{"name": "Samwise Gamgee", "role": "gardener"}' | json_pp
+    Note: Unnecessary use of -X or --request, POST is already inferred.
+            % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+    Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 127.0.0.1:8080...
+            * TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+            > POST /employees HTTP/1.1
+            > Host: localhost:8080
+            > User-Agent: curl/7.68.0
+> Content-Type:application/json
+> Content-Length: 46
+>
+} [46 bytes data]
+* upload completely sent off: 46 out of 46 bytes
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 405
+< Allow: GET
+< Content-Type: application/json
+< Transfer-Encoding: chunked
+...
+{
+   "firstName" : "Samwise",
+   "id" : 3,
+   "lastName" : "Gamgee",
+   "name" : "Samwise Gamgee",
+   "role" : "gardener"
+}
+*/
+// no links included,because it returns merely Employee
+
+    @PostMapping("/employees")
+    ResponseEntity<?> newEmployee(@RequestBody Employee newEmployee) {
+
+        EntityModel<Employee> entityModel = assembler.toModel(repository.save(newEmployee));
+
+        return ResponseEntity //
+                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()) //
+                .body(entityModel);
+    } // This returns employee resource(links included)
+    /*
+$ curl -v -X POST localhost:8080/employees -H 'Content-Type:application/json' -d '{"name": "Samwise Gamgee", "role": "gardener"}' | json_pp
+Note: Unnecessary use of -X or --request, POST is already inferred.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 127.0.0.1:8080...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> POST /employees HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.68.0
+...
+< HTTP/1.1 201
+< Location: http://localhost:8080/employees/3
+< Content-Type: application/hal+json
+< Transfer-Encoding: chunked
+<
+{ [216 bytes data]
+        100   256    0   210  100    46    813    178 --:--:-- --:--:-- --:--:--   992
+        * Connection #0 to host localhost left intact
+        {
+        "_links" : {
+        "employees" : {
+        "href" : "http://localhost:8080/employees"
+        },
+        "self" : {
+        "href" : "http://localhost:8080/employees/3"
+        }
+        },
+        "firstName" : "Samwise",
+        "id" : 3,
+        "lastName" : "Gamgee",
+        "name" : "Samwise Gamgee",
+        "role" : "gardener"
+        }
+ */
 
     @PutMapping("/employees/{id}")
     Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
