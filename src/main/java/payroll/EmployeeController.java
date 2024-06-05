@@ -19,20 +19,29 @@ import org.springframework.hateoas.CollectionModel;
 class EmployeeController {
 
     private final EmployeeRepository repository;
+    private final EmployeeModelAssembler assembler;
 
-    EmployeeController(EmployeeRepository repository) {
+    EmployeeController(EmployeeRepository repository, EmployeeModelAssembler assembler) {
         this.repository = repository;
+        this.assembler = assembler;
     }
 
+    /*
+     * A critical ingredient to any RESTful service is adding links to relevant operations.
+     * To make your controller more RESTful, add links like the following to the existing one method in EmployeeController:
 
-    // Aggregate root
-    // tag::get-aggregate-root[]
-    /*@GetMapping("/employees")
-    List<Employee> all() {
-        return repository.findAll();
-    }*/
-    // end::get-aggregate-root[]
+     * Getting a single item resource using Assembler
+     */
+    @GetMapping("/employees/{id}")
+    EntityModel<Employee> one(@PathVariable Long id) {
 
+        Employee employee = repository.findById(id) //
+                .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+        return assembler.toModel(employee);
+    }
+
+    /*
     @GetMapping("/employees")
     CollectionModel<EntityModel<Employee>> all() {
 
@@ -43,27 +52,21 @@ class EmployeeController {
                 .collect(Collectors.toList());
 
         return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
+    }*/
+
+    @GetMapping("/employees")
+    CollectionModel<EntityModel<Employee>> all() {
+
+        List<EntityModel<Employee>> employees = repository.findAll().stream() //
+                .map(assembler::toModel) //
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
     }
 
     @PostMapping("/employees")
     Employee newEmployee(@RequestBody Employee newEmployee) {
         return repository.save(newEmployee);
-    }
-
-    /*
-     * A critical ingredient to any RESTful service is adding links to relevant operations.
-     * To make your controller more RESTful, add links like the following to the existing one method in EmployeeController:
-     */
-    // Getting a single item resource
-    @GetMapping("/employees/{id}")
-    EntityModel<Employee> one(@PathVariable Long id) {
-
-        Employee employee = repository.findById(id) //
-                .orElseThrow(() -> new EmployeeNotFoundException(id));
-
-        return EntityModel.of(employee,
-                linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
-                linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
     }
 
     @PutMapping("/employees/{id}")
@@ -90,6 +93,6 @@ class EmployeeController {
 class EmployeeNotFoundException extends RuntimeException {
 
     EmployeeNotFoundException(Long id) {
-        super("Could not find employee " + id);
+        super("I could not find employee " + id);
     }
 }
